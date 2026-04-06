@@ -30,7 +30,8 @@ export function instrumentLoop(source, loopInfo) {
         return;
     }
     i_debug_counter++;
-    // ──────────────────────────────────────────────`
+    // ──────────────────────────────────────────────
+`
 
     let instrumented = source
 
