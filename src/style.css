@@ -1,5 +1,5 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'fira code', 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, Courier, monospace;
   line-height: 1.5;
   font-weight: 400;
 
@@ -13,11 +13,16 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+input {
+  font-family: inherit;
+}
+
 a {
   font-weight: 500;
-  color: #646cff;
+  color: #a9a9a9;
   text-decoration: inherit;
 }
+
 a:hover {
   color: #535bf2;
 }
@@ -34,7 +39,6 @@ h1 {
 }
 
 button {
-  border-radius: 8px;
   border: 1px solid transparent;
   padding: 0.6em 1.2em;
   font-size: 1em;
@@ -44,9 +48,11 @@ button {
   cursor: pointer;
   transition: border-color 0.25s;
 }
+
 button:hover {
   border-color: #646cff;
 }
+
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
@@ -62,13 +68,114 @@ button:focus-visible {
 
 @media (prefers-color-scheme: light) {
   :root {
-    color: #213547;
+    color: #212121;
     background-color: #ffffff;
   }
+
   a:hover {
     color: #747bff;
   }
+
   button {
     background-color: #f9f9f9;
   }
+}
+
+/* 重置默认样式 */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 200px;
+  height: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* ===== Track（底层轨道） ===== */
+
+/* Chrome / Safari */
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  background: white;
+}
+
+/* Firefox */
+input[type="range"]::-moz-range-track {
+  height: 6px;
+  background: white;
+}
+
+/* ===== Progress（已滑过部分） ===== */
+
+/* Chrome 需要用渐变模拟 */
+input[type="range"] {
+  background: linear-gradient(to right,
+      #aaa 0%,
+      #aaa var(--progress, 0%),
+      white var(--progress, 0%),
+      white 100%);
+  border-radius: 2px;
+}
+
+/* Firefox 原生支持 */
+input[type="range"]::-moz-range-progress {
+  height: 6px;
+  background: #aaa;
+  border-radius: 2px;
+}
+
+/* ===== Thumb（滑块） ===== */
+
+/* Chrome / Safari */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  background: #212121;
+  border: 2px solid white;
+  border-radius: 0;
+  /* 方形 */
+  margin-top: -4px;
+  /* 对齐 track */
+  box-sizing: border-box;
+}
+
+/* Firefox */
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: #212121;
+  border: 2px solid white;
+  border-radius: 0;
+  box-sizing: border-box;
+}
+
+/* 整体宽度 */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+/* 轨道 */
+::-webkit-scrollbar-track {
+  background: white;
+}
+
+/* 滑块 */
+::-webkit-scrollbar-thumb {
+  background: #212121;
+  border: 1px solid white;
+  border-radius: 0;
+  /* 方形 */
+  box-sizing: border-box;
+}
+
+/* hover 状态 */
+::-webkit-scrollbar-thumb:hover {
+  background: #222;
+}
+
+/* 点击状态 */
+::-webkit-scrollbar-thumb:active {
+  background: #444;
 }
