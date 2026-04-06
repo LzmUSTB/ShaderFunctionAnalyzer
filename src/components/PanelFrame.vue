@@ -20,7 +20,6 @@ defineProps({
 }
 
 .panel-header {
-  font-size: 16px;
   user-select: none;
   background-color: #212121;
   font-weight: bold;

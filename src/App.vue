@@ -1,6 +1,8 @@
 <template>
   <div class="app-layout">
 
+    <Credit class="credit-panel" />
+
     <CodePanel class="code-panel" @parse="onParse" />
 
     <SidePanel class="side-panel" :functions="parsedFunctions" :uniforms="parsedUniforms"
@@ -19,6 +21,7 @@ import { ref } from 'vue'
 import CodePanel from './components/CodePanel.vue'
 import SidePanel from './components/SidePanel.vue'
 import GraphPanel from './components/GraphPanel.vue'
+import Credit from './components/Credit.vue'
 
 // Parsed shader content
 const parsedFunctions = ref([])
@@ -81,9 +84,10 @@ function onSelectWatchVar({ fn, loopIndex, loop, watchVar, isPreLoop }) {
 .app-layout {
   display: grid;
   grid-template-columns: 1fr 1fr 2fr;
-  /* grid-template-rows: 1fr 1fr; */
+  grid-template-rows: auto 1fr;
   grid-template-areas:
-    "code side  graph";
+    "credit side graph"
+    "code side graph";
   height: 100vh;
   background: #ffffff;
   color: #e0e0e0;
@@ -92,24 +96,22 @@ function onSelectWatchVar({ fn, loopIndex, loop, watchVar, isPreLoop }) {
   box-sizing: border-box;
 }
 
+.credit-panel {
+  grid-area: credit;
+}
+
 .code-panel {
   grid-area: code;
-  border: 1px solid #ccc;
-  border-radius: 4px;
   overflow: auto;
 }
 
 .side-panel {
   grid-area: side;
-  border: 1px solid #ccc;
-  border-radius: 4px;
   overflow: auto;
 }
 
 .graph-panel {
   grid-area: graph;
-  border: 1px solid #ccc;
-  border-radius: 4px;
   overflow: auto;
 }
 </style>

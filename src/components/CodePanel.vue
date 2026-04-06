@@ -13,19 +13,12 @@
         <pre class="code-highlight" ref="highlightEl" aria-hidden="true"><code v-html="highlighted"></code></pre>
 
         <!-- Transparent editing layer -->
-        <textarea
-          class="code-input"
-          ref="textareaEl"
-          v-model="code"
-          spellcheck="false"
-          placeholder="Paste your GLSL code here..."
-          @keydown="onKeyDown"
-          @scroll="syncScroll"
-        />
+        <textarea class="code-input" ref="textareaEl" v-model="code" spellcheck="false"
+          placeholder="Paste your GLSL code here..." @keydown="onKeyDown" @scroll="syncScroll" />
       </div>
 
     </div>
-    <button class="parse-btn" @click="onParse">Parse</button>
+    <button class="parse-btn" @click="onParse">PARSE</button>
     <div v-if="parseError" class="parse-error">{{ parseError }}</div>
   </PanelFrame>
 </template>
@@ -38,7 +31,7 @@ import PanelFrame from './PanelFrame.vue'
 const emit = defineEmits(['parse'])
 
 const code = ref(
-`//RGB phase shifts
+  `//RGB phase shifts
 uniform vec3 u_rgb; //0, 0.6, 1.2 [0, 6]
 //Bokeh radius
 uniform vec2 u_bokeh; //0.4, 0.8 [0, 4]
@@ -101,9 +94,9 @@ void main()
 }`
 )
 
-const parseError  = ref(null)
-const gutterEl    = ref(null)
-const textareaEl  = ref(null)
+const parseError = ref(null)
+const gutterEl = ref(null)
+const textareaEl = ref(null)
 const highlightEl = ref(null)
 
 // Count lines reactively — drives the gutter numbers
@@ -111,37 +104,37 @@ const lineCount = computed(() => code.value.split('\n').length)
 
 // ── GLSL syntax highlighter ───────────────────────────────────────────────
 const KEYWORDS = new Set([
-  'void','float','int','uint','bool',
-  'vec2','vec3','vec4','ivec2','ivec3','ivec4','uvec2','uvec3','uvec4',
-  'bvec2','bvec3','bvec4',
-  'mat2','mat3','mat4','mat2x2','mat2x3','mat2x4','mat3x2','mat3x3','mat3x4','mat4x2','mat4x3','mat4x4',
-  'sampler2D','samplerCube','sampler3D',
-  'if','else','for','while','do','break','continue','return','discard',
-  'switch','case','default',
-  'uniform','varying','attribute','const','in','out','inout',
-  'precision','highp','mediump','lowp','invariant','flat','smooth',
-  'struct','layout',
+  'void', 'float', 'int', 'uint', 'bool',
+  'vec2', 'vec3', 'vec4', 'ivec2', 'ivec3', 'ivec4', 'uvec2', 'uvec3', 'uvec4',
+  'bvec2', 'bvec3', 'bvec4',
+  'mat2', 'mat3', 'mat4', 'mat2x2', 'mat2x3', 'mat2x4', 'mat3x2', 'mat3x3', 'mat3x4', 'mat4x2', 'mat4x3', 'mat4x4',
+  'sampler2D', 'samplerCube', 'sampler3D',
+  'if', 'else', 'for', 'while', 'do', 'break', 'continue', 'return', 'discard',
+  'switch', 'case', 'default',
+  'uniform', 'varying', 'attribute', 'const', 'in', 'out', 'inout',
+  'precision', 'highp', 'mediump', 'lowp', 'invariant', 'flat', 'smooth',
+  'struct', 'layout',
 ])
 
 const BUILTINS = new Set([
-  'radians','degrees','sin','cos','tan','asin','acos','atan',
-  'sinh','cosh','tanh','asinh','acosh','atanh',
-  'pow','exp','log','exp2','log2','sqrt','inversesqrt',
-  'abs','sign','floor','trunc','round','roundEven','ceil',
-  'fract','mod','modf','min','max','clamp','mix','step','smoothstep',
-  'isnan','isinf','length','distance','dot','cross','normalize',
-  'faceforward','reflect','refract',
-  'matrixCompMult','outerProduct','transpose','determinant','inverse',
-  'lessThan','lessThanEqual','greaterThan','greaterThanEqual','equal','notEqual',
-  'any','all','not',
-  'texture','texture2D','textureCube','textureProj','textureLod',
-  'dFdx','dFdy','fwidth',
+  'radians', 'degrees', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan',
+  'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh',
+  'pow', 'exp', 'log', 'exp2', 'log2', 'sqrt', 'inversesqrt',
+  'abs', 'sign', 'floor', 'trunc', 'round', 'roundEven', 'ceil',
+  'fract', 'mod', 'modf', 'min', 'max', 'clamp', 'mix', 'step', 'smoothstep',
+  'isnan', 'isinf', 'length', 'distance', 'dot', 'cross', 'normalize',
+  'faceforward', 'reflect', 'refract',
+  'matrixCompMult', 'outerProduct', 'transpose', 'determinant', 'inverse',
+  'lessThan', 'lessThanEqual', 'greaterThan', 'greaterThanEqual', 'equal', 'notEqual',
+  'any', 'all', 'not',
+  'texture', 'texture2D', 'textureCube', 'textureProj', 'textureLod',
+  'dFdx', 'dFdy', 'fwidth',
 ])
 
 const GL_VARS = new Set([
-  'gl_Position','gl_PointSize','gl_FragCoord','gl_FrontFacing',
-  'gl_FragDepth','gl_PointCoord','gl_VertexID','gl_InstanceID',
-  'gl_FragColor','fragColor',
+  'gl_Position', 'gl_PointSize', 'gl_FragCoord', 'gl_FrontFacing',
+  'gl_FragDepth', 'gl_PointCoord', 'gl_VertexID', 'gl_InstanceID',
+  'gl_FragColor', 'fragColor',
 ])
 
 function escapeHtml(s) {
@@ -158,7 +151,7 @@ function highlightGLSL(src) {
   let m
   while ((m = TOKEN_RE.exec(src)) !== null) {
     const tok = m[0]
-    const ch  = tok[0]
+    const ch = tok[0]
     if (ch === '/' || ch === '*') {
       // comments (line or block)
       out += `<span class="hl-comment">${escapeHtml(tok)}</span>`
@@ -189,21 +182,21 @@ function onKeyDown(e) {
   if (e.key !== 'Tab') return
   e.preventDefault()
 
-  const el    = textareaEl.value
+  const el = textareaEl.value
   const start = el.selectionStart
-  const end   = el.selectionEnd
+  const end = el.selectionEnd
 
   code.value = code.value.slice(0, start) + '    ' + code.value.slice(end)
 
   nextTick(() => {
     el.selectionStart = start + 4
-    el.selectionEnd   = start + 4
+    el.selectionEnd = start + 4
   })
 }
 
 // ── Sync gutter + highlight scroll with textarea scroll ──────────────────
 function syncScroll() {
-  gutterEl.value.scrollTop    = textareaEl.value.scrollTop
+  gutterEl.value.scrollTop = textareaEl.value.scrollTop
   highlightEl.value.scrollTop = textareaEl.value.scrollTop
 }
 
@@ -255,7 +248,10 @@ function onParse() {
 .code-highlight,
 .code-input {
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   margin: 0;
   padding: 12px;
   font-family: inherit;
@@ -269,7 +265,8 @@ function onParse() {
 /* ── Syntax-highlighted pre layer ── */
 .code-highlight {
   background: #212121;
-  color: #a8d8a8;         /* default token colour */
+  color: #a8d8a8;
+  /* default token colour */
   overflow-y: scroll;
   overflow-x: hidden;
   pointer-events: none;
@@ -290,13 +287,39 @@ function onParse() {
 /* ── GLSL token colours ── */
 /* :deep() is required because the spans are injected via v-html and
    Vue does not stamp scoped attributes onto dynamically-inserted nodes */
-:deep(.hl-keyword) { color: #569cd6; }   /* blue  — types / qualifiers / control flow */
-:deep(.hl-builtin) { color: #dcdcaa; }   /* yellow — built-in functions */
-:deep(.hl-comment) { color: #6a9955; font-style: italic; }
-:deep(.hl-number)  { color: #b5cea8; }   /* muted green */
-:deep(.hl-preproc) { color: #c586c0; }   /* purple — #version / #define */
-:deep(.hl-glvar)   { color: #9cdcfe; }   /* light blue — gl_* / fragColor */
-:deep(.hl-bool)    { color: #569cd6; }
+:deep(.hl-keyword) {
+  color: #569cd6;
+}
+
+/* blue  — types / qualifiers / control flow */
+:deep(.hl-builtin) {
+  color: #dcdcaa;
+}
+
+/* yellow — built-in functions */
+:deep(.hl-comment) {
+  color: #6a9955;
+  font-style: italic;
+}
+
+:deep(.hl-number) {
+  color: #b5cea8;
+}
+
+/* muted green */
+:deep(.hl-preproc) {
+  color: #c586c0;
+}
+
+/* purple — #version / #define */
+:deep(.hl-glvar) {
+  color: #9cdcfe;
+}
+
+/* light blue — gl_* / fragColor */
+:deep(.hl-bool) {
+  color: #569cd6;
+}
 
 /* ── Transparent editing layer ── */
 .code-input {
@@ -325,7 +348,7 @@ function onParse() {
 }
 
 .parse-btn:hover {
-  background: #d3d3d3;
+  background-color: #d6d6d6;
 }
 
 .parse-error {

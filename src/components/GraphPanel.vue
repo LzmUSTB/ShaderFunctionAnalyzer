@@ -50,8 +50,9 @@
         <div v-if="errorMsg" class="overlay-error">{{ errorMsg }}</div>
 
         <!-- Hover tooltip -->
-        <div v-if="tooltip.visible" ref="tooltipEl" class="tooltip" :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px' }">{{
-          tooltip.text }}</div>
+        <div v-if="tooltip.visible" ref="tooltipEl" class="tooltip"
+          :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px' }">{{
+            tooltip.text }}</div>
       </div>
 
       <!-- ── Resize splitter ── -->
@@ -61,15 +62,10 @@
 
       <!-- ── Thread chart ── -->
       <div class="chart-wrap">
-        <ThreadChart
-          :chart-data="chartData"
-          :iter-n="Math.round(iterN)"
-          :watch-var-type="selectedLoop?.watchVar?.type ?? null"
-          :collecting="collecting"
-          :has-watch-var="!!selectedLoop?.watchVar"
-        />
+        <ThreadChart :chart-data="chartData" :iter-n="Math.round(iterN)"
+          :watch-var-type="selectedLoop?.watchVar?.type ?? null" :collecting="collecting"
+          :has-watch-var="!!selectedLoop?.watchVar" />
       </div>
-
     </div>
   </PanelFrame>
 </template>
@@ -90,20 +86,20 @@ const props = defineProps({
   uniformValues: { type: Object, default: () => ({}) },
 })
 
-const canvasEl    = ref(null)
-const errorMsg    = ref(null)
-const tooltipEl   = ref(null)
+const canvasEl = ref(null)
+const errorMsg = ref(null)
+const tooltipEl = ref(null)
 const graphAreaEl = ref(null)
-const tooltip     = reactive({ visible: false, x: 0, y: 0, text: '' })
+const tooltip = reactive({ visible: false, x: 0, y: 0, text: '' })
 
 // ── Resizable splitter ────────────────────────────────────────────────────────
-const splitPct   = ref(65)   // percentage of graph-area height given to heatmap
+const splitPct = ref(65)   // percentage of graph-area height given to heatmap
 const isDragging = ref(false)
 
 function onSplitterMouseDown(e) {
   e.preventDefault()
   isDragging.value = true
-  const startY   = e.clientY
+  const startY = e.clientY
   const startPct = splitPct.value
 
   function onMove(ev) {
@@ -114,10 +110,10 @@ function onSplitterMouseDown(e) {
   function onUp() {
     isDragging.value = false
     document.removeEventListener('mousemove', onMove)
-    document.removeEventListener('mouseup',   onUp)
+    document.removeEventListener('mouseup', onUp)
   }
   document.addEventListener('mousemove', onMove)
-  document.addEventListener('mouseup',   onUp)
+  document.addEventListener('mouseup', onUp)
 }
 
 // Heatmap range
@@ -144,7 +140,7 @@ onMounted(() => {
 
     const newW = Math.round(width)
     const newH = Math.round(height)
-    canvasEl.value.width  = newW
+    canvasEl.value.width = newW
     canvasEl.value.height = newH
 
     if (!renderer) {
@@ -162,8 +158,8 @@ onMounted(() => {
     if (trackedPixel.value) {
       const { pct } = trackedPixel.value
       trackedPixel.value = {
-        cx:  Math.round(pct.x / 100 * newW),
-        cy:  Math.round(pct.y / 100 * newH),
+        cx: Math.round(pct.x / 100 * newW),
+        cy: Math.round(pct.y / 100 * newH),
         pct,
       }
     } else {
@@ -255,12 +251,12 @@ function plotLoop() {
   if (!props.selectedLoop?.watchVar) return
   errorMsg.value = null
 
-  const wvType  = props.selectedLoop.watchVar.type
+  const wvType = props.selectedLoop.watchVar.type
   const isColor = wvType === 'vec3' || wvType === 'vec4'
   isDirectMode.value = isColor
 
   const fragSrc = instrumentLoop(props.shaderSource, props.selectedLoop)
-  const result  = renderer.compile(fragSrc)
+  const result = renderer.compile(fragSrc)
   if (!result.ok) { errorMsg.value = result.error; return }
 
   const uniforms = { ...props.uniformValues, u_debug_N: iterN.value }
@@ -302,9 +298,9 @@ function collectThreadData() {
   if (!result.ok) { errorMsg.value = result.error; collecting.value = false; return }
 
   const { cx, cy } = trackedPixel.value
-  const wvType  = props.selectedLoop.watchVar.type
+  const wvType = props.selectedLoop.watchVar.type
   const isColor = wvType === 'vec3' || wvType === 'vec4'
-  const data    = []
+  const data = []
 
   for (let step = 0; step <= maxIter.value; step++) {
     const uniforms = { ...props.uniformValues, u_debug_N: step }
@@ -425,10 +421,9 @@ function clearCanvas() {
 }
 
 .preloop-badge {
-  font-size: 9px;
-  background: #7a4ab8;
+  font-size: 0.9em;
+  background: #4d4d4d;
   color: #fff;
-  border-radius: 3px;
   padding: 1px 4px;
   margin-left: 4px;
   vertical-align: middle;
@@ -514,7 +509,6 @@ function clearCanvas() {
   background: none;
   border: 1px solid #444;
   border-radius: 3px;
-  color: #888;
   font-size: 12px;
   padding: 1px 5px;
   cursor: pointer;
@@ -592,11 +586,11 @@ function clearCanvas() {
   position: absolute;
   width: 14px;
   height: 14px;
-  border: 2px solid #e8a838;
+  border: 1px dotted #212121;
+  outline: 2px double #ffffff;
   border-radius: 50%;
   transform: translate(-50%, -50%);
   pointer-events: none;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
 }
 
 /* ── SVG chart — takes all space left after the heatmap and splitter ── */

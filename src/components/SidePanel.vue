@@ -5,7 +5,8 @@
       <div v-if="functions.length === 0" class="hint">Parse a shader to see functions</div>
       <template v-for="fn in functions" :key="fn.name">
 
-        <div class="list-item" :class="{ selected: selectedFunction?.name === fn.name, void: fn.returnType === 'void' }"
+        <div class="list-item"
+          :class="{ selected: selectedFunction?.name === fn.name, main: fn.name === 'main', void: fn.returnType === 'void' && fn.name !== 'main' }"
           @click="emit('select-function', fn)">
           <span class="type-tag">{{ fn.returnType }}</span>
           <span class="item-name">{{ fn.name }}</span>
@@ -136,6 +137,7 @@ function onVecComponent(name, type, index, value) {
   color: #ffffff;
   padding: 8px 12px;
   border-bottom: 1px solid #6a6a6a;
+  border-top: 1px solid #6a6a6a;
   flex-shrink: 0;
 }
 
@@ -185,6 +187,24 @@ function onVecComponent(name, type, index, value) {
   color: #666;
 }
 
+/* ── main() — shader entry point ── */
+.list-item.main {
+  border-left: 2px solid #e8a838;
+  padding-left: 10px;   /* compensate for the border */
+}
+
+.list-item.main .type-tag {
+  color: #e8a838;
+}
+
+.list-item.main .item-name {
+  color: #f0c878;
+}
+
+.list-item.main .params {
+  color: #8a7040;
+}
+
 .preloop-row {
   padding-left: 24px;
   flex-wrap: wrap;
@@ -217,9 +237,8 @@ function onVecComponent(name, type, index, value) {
 }
 
 .var-chip {
-  font-size: 10px;
+  font-size: 0.8em;
   padding: 1px 6px;
-  border-radius: 3px;
   background: #2a2a2a;
   color: #aaa;
   cursor: pointer;
@@ -256,7 +275,7 @@ function onVecComponent(name, type, index, value) {
 
 .uniform-row {
   padding: 0.2em 0.4em;
-  border-bottom: 1px solid #2a2a2a;
+  border-bottom: 1px solid #474747;
 }
 
 .uniform-header {
@@ -275,7 +294,6 @@ function onVecComponent(name, type, index, value) {
 
 .comp-label {
   font-size: 10px;
-  color: #888;
   width: 10px;
   flex-shrink: 0;
 }
@@ -292,8 +310,7 @@ function onVecComponent(name, type, index, value) {
   gap: 4px;
 }
 
-.vec-row {
-}
+.vec-row {}
 
 .vec-row .comp-label {
   font-size: 0.5em;
