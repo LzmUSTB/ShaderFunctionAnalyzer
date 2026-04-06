@@ -176,71 +176,29 @@ function findNthForLoop(src, startPos, targetIndex) {
 }
 
 /**
- * Find the first position in the loop body that is NOT a declaration.
- * This is where we inject the debug-break, so the watched variable
- * is already declared and in scope above the injection point.
+ * Find the position of the closing } of the loop body.
+ * We inject the capture snippet right before this brace so that every
+ * variable declared anywhere inside the loop body is guaranteed to be
+ * in scope — including variables declared after expression statements.
+ *
+ * Example: if the loop body is:
+ *   { vec2 p = …; float l = …; u *= …;  vec3 hue = …; col += …; }
+ *                                                                 ^ inject here
+ * All of p, l, hue, col are in scope at this point.
  */
 function findInjectionPoint(src, loopBodyOpen) {
-    let i = loopBodyOpen + 1  // step past the {
+    let i     = loopBodyOpen + 1   // step past the opening {
+    let depth = 1
 
-    while (i < src.length) {
-        // Skip whitespace
-        if (/\s/.test(src[i])) { i++; continue }
-
-        // Skip line comments
-        if (src[i] === '/' && src[i+1] === '/') {
-            while (i < src.length && src[i] !== '\n') i++
-            continue
-        }
-
-        // Skip block comments
-        if (src[i] === '/' && src[i+1] === '*') {
-            i += 2
-            while (i < src.length && !(src[i-1] === '*' && src[i] === '/')) i++
-            i++
-            continue
-        }
-
-        // Check if the current statement is a declaration (starts with a type keyword)
-        if (isDeclarationStart(src, i)) {
-            // Skip this whole statement (walk to the matching semicolon, respecting braces)
-            i = skipStatement(src, i)
-            continue
-        }
-
-        // First non-declaration statement — inject here
-        return i
-    }
-    return loopBodyOpen + 1
-}
-
-const TYPE_KEYWORDS = new Set([
-    'float','int','uint','bool',
-    'vec2','vec3','vec4',
-    'ivec2','ivec3','ivec4',
-    'mat2','mat3','mat4',
-])
-
-function isDeclarationStart(src, i) {
-    // Read the word starting at i
-    const match = src.slice(i).match(/^([a-zA-Z_]\w*)/)
-    if (!match) return false
-    return TYPE_KEYWORDS.has(match[1])
-}
-
-/** Walk forward past a statement (to the semicolon), respecting nested braces */
-function skipStatement(src, i) {
-    let depth = 0
     while (i < src.length) {
         if (src[i] === '{') depth++
         if (src[i] === '}') {
-            if (depth === 0) return i
             depth--
+            if (depth === 0) return i   // position of the closing }
         }
-        if (src[i] === ';' && depth === 0) return i + 1
         i++
     }
-    return i
+    return loopBodyOpen + 1
 }
 
 // ── Full shader builder ──────────────────────────────────────────────────────

@@ -318,6 +318,13 @@ function plotFunction(fn) {
     return
   }
 
+  // Matrix types cannot be mapped to a single float for the heatmap
+  const PLOTTABLE = new Set(['float', 'int', 'vec2', 'vec3', 'vec4'])
+  if (!PLOTTABLE.has(fn.returnType)) {
+    errorMsg.value = `"${fn.name}" returns ${fn.returnType} — matrix types cannot be plotted as a heatmap.\n\nSelect an individual loop variable chip to use the thread tracker.`
+    return
+  }
+
   isDirectMode.value = false
   const fragSrc = wrapFunction(props.shaderSource, fn, { xMin:-1, xMax:1, yMin:-1, yMax:1 })
   const result  = renderer.compile(fragSrc)
