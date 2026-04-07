@@ -18,15 +18,16 @@
  * @param {object} plotRange    — { xMin, xMax, yMin, yMax }
  * @returns {string}            — complete #version 300 es fragment shader source
  */
-export function wrapFunction(userSource, fn, plotRange = { xMin: -1, xMax: 1, yMin: -1, yMax: 1 }) {
+export function wrapFunction(userSource, fn, plotRange = { xMin: -1, xMax: 1, yMin: -1, yMax: 1 }, paramValues = {}) {
     // Remove the original main() from the user source so we can inject our own.
     // We keep all uniforms, helper functions, etc.
     const sourceWithoutMain = stripMain(userSource)
 
     // Build the argument list for calling the selected function.
     // The first vec2 parameter becomes the plot coordinate.
-    // All other parameters get a default value of 0.0 (or zero-vectors).
-    const callArgs = buildCallArgs(fn.params)
+    // All other parameters use values from paramValues (calculator bar), falling
+    // back to zero when not provided.
+    const callArgs = buildCallArgs(fn.params, paramValues)
 
     // Build the main() that evaluates the function and stores the float result
     const injectedMain = buildMain(fn, callArgs, plotRange)
@@ -140,7 +141,7 @@ function stripMain(src) {
  * This is intentionally simple — Step 6 will replace defaults with real
  * uniform controls so the user can tweak them via sliders.
  */
-function buildCallArgs(params) {
+function buildCallArgs(params, paramValues = {}) {
     let firstVec2Used = false
 
     return params.map(p => {
@@ -148,7 +149,8 @@ function buildCallArgs(params) {
             firstVec2Used = true
             return 'plotCoord'
         }
-        return defaultLiteral(p.type)
+        const val = paramValues[p.name]
+        return val != null ? glslLiteral(p.type, val) : defaultLiteral(p.type)
     }).join(', ')
 }
 
@@ -205,6 +207,32 @@ function buildMain(fn, callArgs, r) {
 
     ${storeResult}
 }`
+}
+
+/**
+ * Convert a JS value to a GLSL literal of the given type.
+ * Used to embed calculator-bar param values directly into the shader source.
+ */
+function glslLiteral(type, val) {
+    const fl = n => floatLit(Number(n ?? 0))
+    switch (type) {
+        case 'float': return fl(val)
+        case 'int':   return String(Math.round(Number(val ?? 0)))
+        case 'bool':  return val ? 'true' : 'false'
+        case 'vec2': {
+            const v = Array.isArray(val) ? val : [val ?? 0, 0]
+            return `vec2(${fl(v[0])}, ${fl(v[1] ?? 0)})`
+        }
+        case 'vec3': {
+            const v = Array.isArray(val) ? val : [val ?? 0, 0, 0]
+            return `vec3(${fl(v[0])}, ${fl(v[1] ?? 0)}, ${fl(v[2] ?? 0)})`
+        }
+        case 'vec4': {
+            const v = Array.isArray(val) ? val : [val ?? 0, 0, 0, 0]
+            return `vec4(${fl(v[0])}, ${fl(v[1] ?? 0)}, ${fl(v[2] ?? 0)}, ${fl(v[3] ?? 0)})`
+        }
+        default: return '0.0'
+    }
 }
 
 /** Ensure a number is written as a valid GLSL float literal (always has a dot) */

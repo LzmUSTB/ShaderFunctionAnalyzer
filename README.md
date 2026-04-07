@@ -2,8 +2,7 @@
 
 An interactive tool for analyzing GLSL fragment shaders. Paste your shader code, select a function or loop variable, click a pixel on the rendered output, and watch how the value evolves across loop iterations — all in real time.
 
-※ This project was developed with the assistance of AI tools.
----
+※ This project is developed with the assistance of Claude Code.
 
 ## Features
 

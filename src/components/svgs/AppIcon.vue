@@ -1,0 +1,26 @@
+<template>
+    <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" height="1em"
+        viewBox="0 0 283.46 283.46">
+        <defs>
+            <clipPath id="clippath">
+                <circle cx="141.73" cy="141.73" r="116.22"
+                    style="fill: none; stroke: #fff; stroke-miterlimit: 10; stroke-width: 4px;" />
+            </clipPath>
+        </defs>
+        <g>
+            <g>
+                <circle cx="141.73" cy="141.73" r="141.73" style="fill: #212121;" />
+                <circle cx="141.73" cy="141.73" r="116.22" style="fill: #fff; stroke: #fff; stroke-miterlimit: 10;" />
+                <g>
+                    <g style="clip-path: url(#clippath);">
+                        <path
+                            d="M140.23,73.5h26.24v-26.24h-23.24v-23.24H24.01v235.44h72.73v-23.24h20.24v23.24h49.49v-26.24h-23.24v-20.24h23.24v-26.24h-26.24v23.24h-20.24v-23.24h-23.24v-20.24h46.49v-26.24h-23.24v-20.24h46.49v-26.24h-46.49v-20.24h20.24ZM50.25,212.97h20.24v20.24h-20.24v-20.24ZM50.25,119.99h20.24v20.24h-20.24v-20.24ZM73.5,93.74v-20.24h20.25v20.24h-20.25ZM96.74,50.25h20.24v20.24h-20.24v-20.24Z"
+                            style="fill: #212121;" />
+                    </g>
+                    <circle cx="141.73" cy="141.73" r="116.22"
+                        style="fill: none; stroke: #fff; stroke-miterlimit: 10; stroke-width: 10px;" />
+                </g>
+            </g>
+        </g>
+    </svg>
+</template>

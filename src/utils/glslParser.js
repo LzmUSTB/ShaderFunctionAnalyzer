@@ -238,11 +238,11 @@ function typeDimension(type) {
 
 const SHADERTOY_UNIFORMS = [
     { name: 'u_time',       type: 'float', value: 0,             range: { min: 0, max: 100  } },
-    { name: 'u_resolution', type: 'vec2',  value: [512, 512],    range: { min: 0, max: 2048 } },
+    { name: 'u_resolution', type: 'vec2',  value: [512, 512],    range: { min: 0, max: 2048 }, auto: true },
     { name: 'u_mouse',      type: 'vec2',  value: [0, 0],        range: { min: 0, max: 1024 } },
     { name: 'u_date',       type: 'vec4',  value: [0, 0, 0, 0],  range: { min: 0, max: 365  } },
     { name: 'iTime',        type: 'float', value: 0,             range: { min: 0, max: 100  } },
-    { name: 'iResolution',  type: 'vec3',  value: [512, 512, 1], range: { min: 0, max: 2048 } },
+    { name: 'iResolution',  type: 'vec3',  value: [512, 512, 1], range: { min: 0, max: 2048 }, auto: true },
     { name: 'iMouse',       type: 'vec4',  value: [0, 0, 0, 0],  range: { min: 0, max: 1024 } },
     { name: 'iDate',        type: 'vec4',  value: [0, 0, 0, 0],  range: { min: 0, max: 365  } },
     { name: 'iFrame',       type: 'int',   value: 0,             range: { min: 0, max: 1000 } },

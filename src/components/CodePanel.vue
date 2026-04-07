@@ -24,7 +24,7 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { parseGLSL } from '../utils/glslParser'
 import PanelFrame from './PanelFrame.vue'
 
@@ -170,9 +170,16 @@ function onKeyDown(e) {
 
 // ── Sync gutter + highlight scroll with textarea scroll ──────────────────
 function syncScroll() {
-  gutterEl.value.scrollTop = textareaEl.value.scrollTop
+  gutterEl.value.scrollTop    = textareaEl.value.scrollTop
   highlightEl.value.scrollTop = textareaEl.value.scrollTop
 }
+
+// Re-sync after every content change: paste / delete / typing updates the
+// textarea's scroll position (browser scrolls to cursor) before Vue has
+// flushed the new content into the <pre>. The scroll event fires at that
+// moment, so the pre ends up at a mismatched offset. Waiting one tick
+// ensures the pre is up-to-date before we copy the scroll position.
+watch(code, () => nextTick(syncScroll))
 
 // ── Parse ─────────────────────────────────────────────────────────────────
 function onParse() {
@@ -221,6 +228,7 @@ function onParse() {
 /* ── Shared metrics for highlight layer and textarea ── */
 .code-highlight,
 .code-input {
+  box-sizing: border-box;   /* identical content width regardless of element type */
   position: absolute;
   top: 0;
   left: 0;

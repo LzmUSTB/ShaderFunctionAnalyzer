@@ -192,9 +192,12 @@ export class WebGLRenderer {
         gl.enableVertexAttribArray(posLoc)
         gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0)
 
-        // Always set u_resolution if the program uses it
+        // Auto-managed uniforms: always driven by the canvas, never overrideable by sliders.
+        const w = this.canvas.width, h = this.canvas.height
         const resLoc = gl.getUniformLocation(program, 'u_resolution')
-        if (resLoc) gl.uniform2f(resLoc, this.canvas.width, this.canvas.height)
+        if (resLoc) gl.uniform2f(resLoc, w, h)
+        const iResLoc = gl.getUniformLocation(program, 'iResolution')
+        if (iResLoc) gl.uniform3f(iResLoc, w, h, 1.0)
 
         // Build (or retrieve cached) uniform type map so we can call the
         // correct gl.uniform* variant — e.g. uniform int requires uniform1i,
@@ -205,7 +208,11 @@ export class WebGLRenderer {
             this._uniformTypeCache.set(program, typeMap)
         }
 
+        // These are set above from canvas dimensions — skip them in the user-value loop.
+        const AUTO_UNIFORMS = new Set(['u_resolution', 'iResolution'])
+
         for (const [name, value] of Object.entries(floatUniforms)) {
+            if (AUTO_UNIFORMS.has(name)) continue
             if (value == null) continue   // skip unset uniforms (e.g. sampler2D with no texture)
             const loc = gl.getUniformLocation(program, name)
             if (loc === null) continue

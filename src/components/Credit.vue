@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppIcon from './svgs/AppIcon.vue';
 import BlogIcon from './svgs/BlogIcon.vue';
 import Claude from './svgs/Claude.vue';
 import Github from './svgs/Github.vue';
@@ -8,6 +9,9 @@ import Github from './svgs/Github.vue';
 <template>
     <div class="credit-frame">
         <div class="icon-row">
+            <div class="icon-container">
+                <AppIcon />
+            </div>
             <a href="https://amazingwawa.com/" target="_blank" rel="noopener noreferrer">
                 <BlogIcon />
             </a>
@@ -25,18 +29,26 @@ import Github from './svgs/Github.vue';
 </template>
 
 <style scoped>
+.icon-container {
+    color: #212121;
+    background-color: #212121;
+    border: 1px solid #a5a5a5;
+    display: flex;
+    padding: 0.1em;
+}
+
 .credit-frame {
-    padding: 0.2em;
+    padding: 0.1em 0;
     color: #212121;
     display: grid;
     grid-template-columns: auto 1fr;
-    gap: 1em;
+    gap: 0.2em;
 }
 
 .icon-row {
     font-size: 2em;
     display: flex;
-    gap: 0.5em;
+    gap: 0.2em;
     align-items: center;
 }
 

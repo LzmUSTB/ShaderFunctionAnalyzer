@@ -49,8 +49,13 @@
           <span class="item-name">{{ u.name }}</span>
         </div>
 
+        <!-- auto-managed: driven by canvas size, not user-editable -->
+        <div v-if="u.auto" class="auto-note">
+          auto &mdash; {{ formatAutoValue(u, uniformValues[u.name]) }}
+        </div>
+
         <!-- sampler2D: no slider, just a label -->
-        <div v-if="u.type === 'sampler2D'" class="sampler-note">
+        <div v-else-if="u.type === 'sampler2D'" class="sampler-note">
           texture — not editable yet
         </div>
 
@@ -109,6 +114,13 @@ function isPreLoopVarSelected(fn, varName) {
 function onSelectPreLoopVar(fn, v) {
   const loop = fn.loops?.[0] ?? null
   emit('select-watch-var', { fn, loopIndex: 0, loop, watchVar: v, isPreLoop: true })
+}
+
+// Format the live value for an auto-managed uniform (e.g. u_resolution)
+function formatAutoValue(_, val) {
+  if (val == null) return 'canvas size'
+  if (Array.isArray(val)) return val.map(v => Math.round(v)).join(' × ')
+  return String(Math.round(val))
 }
 
 // Return component labels for a vec type
@@ -240,6 +252,7 @@ function onVecComponent(name, type, index, value) {
   font-size: 0.8em;
   padding: 1px 6px;
   background: #2a2a2a;
+  user-select: none;
   color: #aaa;
   cursor: pointer;
   border: 1px solid #444;
@@ -296,6 +309,13 @@ function onVecComponent(name, type, index, value) {
   font-size: 10px;
   width: 10px;
   flex-shrink: 0;
+}
+
+.auto-note {
+  font-size: 10px;
+  color: #5dade2;
+  font-style: italic;
+  padding: 2px 0;
 }
 
 .sampler-note {

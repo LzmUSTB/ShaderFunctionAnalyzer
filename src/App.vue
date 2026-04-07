@@ -26,7 +26,8 @@
     <!-- Column 3: Graph panel — takes remaining space -->
     <div class="col col-right">
       <GraphPanel class="col-fill" :selected-function="selectedFunction" :selected-loop="selectedLoop"
-        :shader-source="shaderSource" :uniform-values="uniformValues" />
+        :shader-source="shaderSource" :uniform-values="uniformValues"
+        @canvas-resize="onCanvasResize" />
     </div>
 
   </div>
@@ -116,6 +117,14 @@ function onSelectLoop({ fn, loopIndex, loop }) {
   const same = selectedLoop.value?.fn.name === fn.name
     && selectedLoop.value?.loopIndex === loopIndex
   selectedLoop.value = same ? null : { fn, loopIndex, loop, watchVar: null }
+}
+
+function onCanvasResize({ width, height }) {
+  const cur = uniformValues.value
+  const next = { ...cur }
+  if ('u_resolution' in cur) next.u_resolution = [width, height]
+  if ('iResolution'  in cur) next.iResolution  = [width, height, 1]
+  uniformValues.value = next
 }
 
 function onSelectWatchVar({ fn, loopIndex, loop, watchVar, isPreLoop }) {

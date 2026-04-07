@@ -20,20 +20,35 @@ export function instrumentLoop(source, loopInfo) {
     const { fn, loopIndex, loop, watchVar, isPreLoop } = loopInfo
 
     const outputExpr = buildOutputExpr(watchVar)
+    const isVoidFn   = fn.returnType === 'void'
 
-    // Use `return` (not `break`) so post-loop fragColor assignments can't overwrite
-    // the captured debug value.
+    // For non-void helper functions (e.g. vec3 star_col), we must:
+    //   1. Guard all fragColor assignments in the user source with !_debug_captured,
+    //      so main() can't overwrite the value we captured inside the helper.
+    //   2. Exit the helper with a typed return value (not bare `return;`).
+    // For void main(), `return;` exits immediately — no post-loop overwrite possible.
+    let patchedSource = source
+    if (!isVoidFn) {
+        // Replace `fragColor =` (assignment only, not `==` / `+=`) with a guarded form.
+        patchedSource = source.replace(/\bfragColor\s*=(?!=)/g, 'if (!_debug_captured) fragColor =')
+    }
+
+    const exitStmt = isVoidFn ? 'return;' : `return ${zeroLiteral(fn.returnType)};`
+
+    // _debug_captured prevents re-capturing on subsequent calls to the same
+    // helper (e.g. when main() calls star_col() multiple times in a loop).
     const captureSnippet = `
     // ── debug capture injected by shader analyzer ──
-    if (float(i_debug_counter) >= u_debug_N) {
+    if (!_debug_captured && float(i_debug_counter) >= u_debug_N) {
         fragColor = ${outputExpr};
-        return;
+        _debug_captured = true;
     }
-    i_debug_counter++;
+    if (!_debug_captured) i_debug_counter++;
+    if (_debug_captured) ${exitStmt}
     // ──────────────────────────────────────────────
 `
 
-    let instrumented = source
+    let instrumented = patchedSource
 
     // For pre-loop vars: inject a capture point BEFORE the first for-loop.
     // This makes u_debug_N == 0 correspond to the variable's initial value.
@@ -48,6 +63,18 @@ export function instrumentLoop(source, loopInfo) {
     }
 
     return buildShader(instrumented)
+}
+
+/** GLSL zero literal for a given return type, used for typed early returns. */
+function zeroLiteral(type) {
+    switch (type) {
+        case 'float': return '0.0'
+        case 'int':   return '0'
+        case 'vec2':  return 'vec2(0.0)'
+        case 'vec3':  return 'vec3(0.0)'
+        case 'vec4':  return 'vec4(0.0)'
+        default:      return '0.0'
+    }
 }
 
 // ── Output expression builder ────────────────────────────────────────────────
@@ -118,6 +145,9 @@ function findPreLoopInjectionPoint(src, fnBodyStart) {
     let depth = 1
 
     while (i < src.length) {
+        const ci = skipComment(src, i)
+        if (ci !== i) { i = ci; continue }
+
         if (src[i] === '{') depth++
         if (src[i] === '}') {
             depth--
@@ -131,6 +161,26 @@ function findPreLoopInjectionPoint(src, fnBodyStart) {
         i++
     }
     return fnBodyStart + 1
+}
+
+/**
+ * If position i is the start of a line comment (//) or block comment (/*),
+ * advance past it and return the new index. Otherwise return i unchanged.
+ * Call this at the top of every scanning loop to skip comment content.
+ */
+function skipComment(src, i) {
+    if (src[i] === '/' && src[i + 1] === '/') {
+        // Single-line comment — skip to end of line
+        while (i < src.length && src[i] !== '\n') i++
+        return i
+    }
+    if (src[i] === '/' && src[i + 1] === '*') {
+        // Block comment — skip to closing */
+        i += 2
+        while (i < src.length - 1 && !(src[i] === '*' && src[i + 1] === '/')) i++
+        return Math.min(i + 2, src.length)
+    }
+    return i
 }
 
 /** Find the opening { of the named function's body */
@@ -156,6 +206,9 @@ function findNthForLoop(src, startPos, targetIndex) {
     if (src[i] === '{') { depth = 1; i++ }
 
     while (i < src.length) {
+        const ci = skipComment(src, i)
+        if (ci !== i) { i = ci; continue }
+
         if (src[i] === '{') depth++
         if (src[i] === '}') {
             depth--
@@ -192,6 +245,9 @@ function findInjectionPoint(src, loopBodyOpen) {
     let depth = 1
 
     while (i < src.length) {
+        const ci = skipComment(src, i)
+        if (ci !== i) { i = ci; continue }
+
         if (src[i] === '{') depth++
         if (src[i] === '}') {
             depth--
@@ -241,7 +297,8 @@ function buildShader(instrumentedSource) {
         '',
         '// ── Mode B debug uniforms ──',
         'uniform float u_debug_N;',
-        'int i_debug_counter = 0;',
+        'bool _debug_captured  = false;',
+        'int  i_debug_counter  = 0;',
         '',
         '// ── original shader (instrumented) ──',
         cleaned,

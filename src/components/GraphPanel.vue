@@ -19,6 +19,59 @@
         @input="onScrub" />
     </div>
 
+    <!-- ── Calculator bar ── -->
+    <div v-if="showCalcBar" class="calc-bar">
+      <div class="calc-sig">
+        <span class="calc-fname">{{ selectedFunction.name }}(</span>
+        <template v-for="(p, pi) in selectedFunction.params" :key="p.name">
+          <span v-if="pi > 0" class="calc-comma">, </span>
+
+          <!-- First vec2 → maps to XY plot space, not user-editable -->
+          <template v-if="isPlotCoordParam(p, pi)">
+            <span class="calc-ptype">{{ p.type }}</span>
+            <span class="calc-pname">{{ p.name }}</span>
+            <span class="calc-plot-label">= XY</span>
+          </template>
+
+          <!-- float / int → single input -->
+          <template v-else-if="p.type === 'float' || p.type === 'int'">
+            <span class="calc-ptype">{{ p.type }}</span>
+            <span class="calc-pname">{{ p.name }}</span>
+            <span class="calc-eq">=</span>
+            <input class="calc-num" type="number" step="0.01"
+                   :value="getCalcParam(p, 0)"
+                   @change="setCalcParam(p, 0, $event.target.value)" />
+          </template>
+
+          <!-- vec2/3/4 → N inputs -->
+          <template v-else-if="['vec2','vec3','vec4'].includes(p.type)">
+            <span class="calc-ptype">{{ p.type }}</span>
+            <span class="calc-pname">{{ p.name }}</span>
+            <span class="calc-eq">=</span>
+            <input v-for="ci in vecDim(p.type)" :key="ci"
+                   class="calc-num" type="number" step="0.01"
+                   :value="getCalcParam(p, ci - 1)"
+                   @change="setCalcParam(p, ci - 1, $event.target.value)" />
+          </template>
+
+          <!-- other types (bool, sampler…) → just label -->
+          <template v-else>
+            <span class="calc-ptype">{{ p.type }}</span>
+            <span class="calc-pname">{{ p.name }}</span>
+          </template>
+        </template>
+        <span class="calc-fname">)</span>
+      </div>
+
+      <div class="calc-result-row">
+        <span class="calc-arrow">→</span>
+        <span class="calc-rtype">{{ selectedFunction.returnType }}</span>
+        <span class="calc-rval">{{ calcResult ?? '—' }}</span>
+        <span v-if="calcRawPx && (selectedFunction.returnType === 'vec3' || selectedFunction.returnType === 'vec4')"
+              class="calc-swatch" :style="calcSwatchStyle" />
+      </div>
+    </div>
+
     <!-- Value range controls — hidden when displaying true color (vec3/vec4 or void main) -->
     <div v-if="!isDirectMode" class="range-bar">
       <span class="range-label">heatmap mapping range</span>
@@ -71,7 +124,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, reactive } from 'vue'
+import { ref, watch, onMounted, reactive, computed } from 'vue'
 import ThreadChart from './ThreadChart.vue'
 import PanelFrame from './PanelFrame.vue'
 import { WebGLRenderer } from '../utils/webglRenderer'
@@ -81,10 +134,12 @@ import { nextTick } from 'vue'
 
 const props = defineProps({
   selectedFunction: { type: Object, default: null },
-  selectedLoop: { type: Object, default: null },
-  shaderSource: { type: String, default: '' },
-  uniformValues: { type: Object, default: () => ({}) },
+  selectedLoop:     { type: Object, default: null },
+  shaderSource:     { type: String, default: '' },
+  uniformValues:    { type: Object, default: () => ({}) },
 })
+
+const emit = defineEmits(['canvas-resize'])
 
 const canvasEl = ref(null)
 const errorMsg = ref(null)
@@ -116,6 +171,25 @@ function onSplitterMouseDown(e) {
   document.addEventListener('mouseup', onUp)
 }
 
+// ── Calculator bar state ──────────────────────────────────────────────────────
+const calcParams = reactive({})   // { paramName: number | number[] }
+const calcResult = ref(null)      // formatted string for display
+const calcRawPx  = ref(null)      // Float32Array from last readPixel
+
+const showCalcBar = computed(() => {
+  const fn = props.selectedFunction
+  return fn && fn.returnType !== 'void' && fn.name !== 'main'
+})
+
+const calcSwatchStyle = computed(() => {
+  const fn = props.selectedFunction
+  if (fn?.returnType !== 'vec3' && fn?.returnType !== 'vec4') return {}
+  const px = calcRawPx.value
+  if (!px) return {}
+  const b = v => Math.round(Math.min(1, Math.max(0, v)) * 255)
+  return { background: `rgb(${b(px[0])},${b(px[1])},${b(px[2])})` }
+})
+
 // Heatmap range
 const heatMin = ref(-1)
 const heatMax = ref(1)
@@ -142,6 +216,7 @@ onMounted(() => {
     const newH = Math.round(height)
     canvasEl.value.width = newW
     canvasEl.value.height = newH
+    emit('canvas-resize', { width: newW, height: newH })
 
     if (!renderer) {
       try {
@@ -175,11 +250,79 @@ onMounted(() => {
   observer.observe(canvasEl.value.parentElement)
 })
 
+// ── Calculator helpers ────────────────────────────────────────────────────────
+const PARAM_DIM = { float: 1, int: 1, bool: 1, vec2: 2, vec3: 3, vec4: 4 }
+
+function initCalcParams(fn) {
+  const names = new Set((fn.params ?? []).map(p => p.name))
+  // Remove stale keys from a previous function
+  for (const k of Object.keys(calcParams)) {
+    if (!names.has(k)) delete calcParams[k]
+  }
+  // Add defaults for new params (preserve existing values when same name)
+  for (const p of fn.params ?? []) {
+    if (calcParams[p.name] !== undefined) continue
+    const dim = PARAM_DIM[p.type] ?? 1
+    calcParams[p.name] = dim === 1 ? 0 : Array(dim).fill(0)
+  }
+}
+
+function getCalcParam(p, ci) {
+  const v = calcParams[p.name]
+  return Array.isArray(v) ? (v[ci] ?? 0) : (v ?? 0)
+}
+
+function setCalcParam(p, ci, raw) {
+  const v = parseFloat(raw)
+  if (!isFinite(v)) return
+  const dim = PARAM_DIM[p.type] ?? 1
+  if (dim === 1) {
+    calcParams[p.name] = p.type === 'int' ? Math.round(v) : v
+  } else {
+    const arr = Array.isArray(calcParams[p.name]) ? [...calcParams[p.name]] : Array(dim).fill(0)
+    arr[ci] = v
+    calcParams[p.name] = arr
+  }
+  if (renderer && props.selectedFunction) plotFunction(props.selectedFunction)
+}
+
+function vecDim(type) {
+  return PARAM_DIM[type] ?? 2
+}
+
+// True when this param is the first vec2 — it becomes the plot coordinate
+function isPlotCoordParam(p, pi) {
+  if (p.type !== 'vec2') return false
+  return (props.selectedFunction?.params ?? []).findIndex(q => q.type === 'vec2') === pi
+}
+
+// Read the center pixel from the FBO and format the function's return value
+function evaluatePoint() {
+  if (!renderer?.hasRendered || !props.selectedFunction) { calcResult.value = null; return }
+  const fn = props.selectedFunction
+  const cx = Math.floor(canvasEl.value.width  / 2)
+  const cy = Math.floor(canvasEl.value.height / 2)
+  const px = renderer.readPixel(cx, cy)
+  calcRawPx.value = px
+  const f = n => Number(n).toFixed(4)
+  switch (fn.returnType) {
+    case 'float': calcResult.value = f(px[0]); break
+    case 'int':   calcResult.value = String(Math.round(px[0])); break
+    case 'vec2':  calcResult.value = `(${f(px[0])}, ${f(px[1])})`; break
+    case 'vec3':  calcResult.value = `(${f(px[0])}, ${f(px[1])}, ${f(px[2])})`; break
+    case 'vec4':  calcResult.value = `(${f(px[0])}, ${f(px[1])}, ${f(px[2])}, ${f(px[3])})`; break
+    default:      calcResult.value = f(px[0])
+  }
+}
+
 // ── Watches ───────────────────────────────────────────────────────────────────
 watch(() => props.selectedFunction, (fn) => {
   if (!renderer) return
-  if (!fn) { clearCanvas(); errorMsg.value = null }
-  else plotFunction(fn)
+  calcResult.value = null
+  calcRawPx.value  = null
+  if (!fn) { clearCanvas(); errorMsg.value = null; return }
+  initCalcParams(fn)
+  plotFunction(fn)
 })
 
 watch(() => props.uniformValues, () => {
@@ -237,7 +380,7 @@ function plotFunction(fn) {
     return
   }
 
-  const fragSrc = wrapFunction(props.shaderSource, fn, { xMin: -1, xMax: 1, yMin: -1, yMax: 1 })
+  const fragSrc = wrapFunction(props.shaderSource, fn, { xMin: -1, xMax: 1, yMin: -1, yMax: 1 }, { ...calcParams })
   const result = renderer.compile(fragSrc)
   if (!result.ok) { errorMsg.value = result.error; return }
 
@@ -251,6 +394,8 @@ function plotFunction(fn) {
     renderer.maxVal = heatMax.value
     renderer.render(props.uniformValues)
   }
+
+  evaluatePoint()
 }
 
 // ── Mode B / Thread Tracker: instrumented shader ──────────────────────────────
@@ -422,7 +567,7 @@ function clearCanvas() {
 
 .scrubber-label {
   font-size: 11px;
-  color: #aaa;
+  color: #c2c2c2;
 }
 
 .scrubber-label strong {
@@ -434,7 +579,7 @@ function clearCanvas() {
   background: #4d4d4d;
   color: #fff;
   padding: 1px 4px;
-  margin-left: 4px;
+  margin-left: 1em;
   vertical-align: middle;
 }
 
@@ -445,7 +590,7 @@ function clearCanvas() {
 
 .maxiter-label {
   font-size: 10px;
-  color: #555;
+  color: #c2c2c2;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -646,6 +791,66 @@ function clearCanvas() {
   white-space: pre-wrap;
   align-items: flex-start;
   font-size: 11px;
+}
+
+/* ── Calculator bar ── */
+.calc-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 12px;
+  border-bottom: 1px solid #3a3a3a;
+  background: #181818;
+  flex-shrink: 0;
+}
+
+.calc-sig {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px;
+  font-size: 11px;
+}
+
+.calc-fname   { color: #dcdcaa; }
+.calc-ptype   { color: #24ffba; }
+.calc-pname   { color: #9cdcfe; margin-left: 2px; }
+.calc-eq      { color: #555; margin: 0 2px; }
+.calc-comma   { color: #666; }
+.calc-plot-label { color: #555; font-style: italic; font-size: 10px; margin-left: 3px; }
+
+.calc-num {
+  width: 58px;
+  background: #252525;
+  border: 1px solid #3a3a3a;
+  border-radius: 2px;
+  color: #e0e0e0;
+  font-size: 11px;
+  padding: 1px 4px;
+  text-align: center;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.calc-num::-webkit-inner-spin-button,
+.calc-num::-webkit-outer-spin-button { display: none; }
+.calc-num:focus { outline: none; border-color: #5dade2; }
+
+.calc-result-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+.calc-arrow { color: #555; }
+.calc-rtype { color: #24ffba; font-size: 10px; }
+.calc-rval  { color: #e8a838; }
+.calc-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 1px solid #555;
+  border-radius: 2px;
+  flex-shrink: 0;
 }
 
 /* ── Tooltip ── */

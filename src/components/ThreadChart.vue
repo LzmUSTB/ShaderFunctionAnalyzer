@@ -261,7 +261,7 @@ function onHover(e) {
   top: 6px;
   background: rgba(0, 0, 0, .82);
   border: 1px solid #3a3a3a;
-  border-radius: 4px;
+  border-radius: 1px;
   padding: 4px 8px;
   pointer-events: none;
   min-width: 100px;
@@ -269,7 +269,7 @@ function onHover(e) {
 
 .ct-step {
   font-size: 9px;
-  color: #555;
+  color: #c2c2c2;
   margin-bottom: 2px;
 }
 
