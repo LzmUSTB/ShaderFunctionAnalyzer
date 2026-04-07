@@ -1,8 +1,8 @@
 <template>
   <PanelFrame title="Graph">
 
-    <!-- Scrubber bar (Mode B / thread tracker) -->
-    <div v-if="selectedLoop?.watchVar" class="scrubber-bar">
+    <!-- Scrubber bar (Mode B / thread tracker) — hidden for body-var captures -->
+    <div v-if="selectedLoop?.watchVar && !selectedLoop?.isBodyVar" class="scrubber-bar">
       <div class="scrubber-top-row">
         <span class="scrubber-label">
           step {{ Math.round(iterN) }} / {{ maxIter }}
@@ -97,7 +97,7 @@
         <div v-if="!selectedFunction && !selectedLoop?.watchVar" class="overlay-hint">
           Select a function to plot, or select a variable chip to track
         </div>
-        <div v-if="selectedLoop?.watchVar && !trackedPixel" class="overlay-click-hint">
+        <div v-if="selectedLoop?.watchVar && !trackedPixel && !selectedLoop?.isBodyVar" class="overlay-click-hint">
           Click to pick a pixel and see its thread chart
         </div>
         <div v-if="errorMsg" class="overlay-error">{{ errorMsg }}</div>
@@ -129,7 +129,7 @@ import ThreadChart from './ThreadChart.vue'
 import PanelFrame from './PanelFrame.vue'
 import { WebGLRenderer } from '../utils/webglRenderer'
 import { wrapFunction, wrapMain } from '../utils/shaderWrapper'
-import { instrumentLoop } from '../utils/loopInstrumenter'
+import { instrumentLoop, instrumentBodyVar } from '../utils/loopInstrumenter'
 import { nextTick } from 'vue'
 
 const props = defineProps({
@@ -244,7 +244,7 @@ onMounted(() => {
     if (props.selectedFunction) plotFunction(props.selectedFunction)
     else if (props.selectedLoop?.watchVar) {
       plotLoop()
-      if (trackedPixel.value) collectThreadData()
+      if (trackedPixel.value && !props.selectedLoop?.isBodyVar) collectThreadData()
     }
   })
   observer.observe(canvasEl.value.parentElement)
@@ -403,11 +403,32 @@ function plotLoop() {
   if (!props.selectedLoop?.watchVar) return
   errorMsg.value = null
 
-  const wvType = props.selectedLoop.watchVar.type
+  const sl = props.selectedLoop
+  const wvType = sl.watchVar.type
   const isColor = wvType === 'vec3' || wvType === 'vec4'
   isDirectMode.value = isColor
 
-  const fragSrc = instrumentLoop(props.shaderSource, props.selectedLoop)
+  // ── Body-var path (no for-loop) ──────────────────────────────────────────
+  if (sl.isBodyVar) {
+    const fragSrc = instrumentBodyVar(props.shaderSource, sl)
+    const result = renderer.compile(fragSrc)
+    if (!result.ok) { errorMsg.value = result.error; return }
+    // isOutput (fragColor): show real colors; otherwise heatmap the captured value
+    if (sl.watchVar.isOutput) {
+      isDirectMode.value = true
+      renderer.renderDirect(props.uniformValues)
+    } else if (isColor) {
+      renderer.renderDirect(props.uniformValues)
+    } else {
+      renderer.minVal = heatMin.value
+      renderer.maxVal = heatMax.value
+      renderer.render(props.uniformValues)
+    }
+    return
+  }
+
+  // ── Loop-tracker path ────────────────────────────────────────────────────
+  const fragSrc = instrumentLoop(props.shaderSource, sl)
   const result = renderer.compile(fragSrc)
   if (!result.ok) { errorMsg.value = result.error; return }
 
@@ -424,6 +445,7 @@ function plotLoop() {
 // ── Pixel picker ──────────────────────────────────────────────────────────────
 function onCanvasClick(e) {
   if (!renderer || !props.selectedLoop?.watchVar) return
+  if (props.selectedLoop?.isBodyVar) return   // no thread-picking for body vars
 
   const rect = canvasEl.value.getBoundingClientRect()
   const scaleX = canvasEl.value.width / rect.width
@@ -695,7 +717,7 @@ function clearCanvas() {
   flex: none;
   position: relative;
   overflow: hidden;
-  background-color: #fff;
+  background-color: #000;
   min-height: 0;
 }
 

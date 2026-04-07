@@ -89,7 +89,6 @@ function onParse({ functions, uniforms, source }) {
   parsedFunctions.value = functions
   parsedUniforms.value = uniforms
   shaderSource.value = source
-  selectedFunction.value = null
   selectedUniform.value = null
   selectedLoop.value = null
   const next = {}
@@ -97,6 +96,8 @@ function onParse({ functions, uniforms, source }) {
     next[u.name] = uniformValues.value[u.name] ?? u.value
   }
   uniformValues.value = next
+  // Auto-select void main() so the shader renders immediately after parsing
+  selectedFunction.value = functions.find(f => f.name === 'main') ?? null
 }
 
 function onUpdateUniform({ name, value }) {
@@ -104,7 +105,7 @@ function onUpdateUniform({ name, value }) {
 }
 
 function onSelectFunction(fn) {
-  selectedFunction.value = selectedFunction.value?.name === fn.name ? null : fn
+  selectedFunction.value = selectedFunction.value?.id === fn.id ? null : fn
   selectedLoop.value = null
 }
 
@@ -114,7 +115,7 @@ function onSelectUniform(u) {
 
 function onSelectLoop({ fn, loopIndex, loop }) {
   selectedFunction.value = null
-  const same = selectedLoop.value?.fn.name === fn.name
+  const same = selectedLoop.value?.fn.id === fn.id
     && selectedLoop.value?.loopIndex === loopIndex
   selectedLoop.value = same ? null : { fn, loopIndex, loop, watchVar: null }
 }

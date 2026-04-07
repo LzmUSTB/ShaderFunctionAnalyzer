@@ -341,6 +341,9 @@ out vec4 fragColor;
 uniform sampler2D u_floatTex;
 
 void main() {
-    fragColor = texture(u_floatTex, v_uv);
+    vec4 col = texture(u_floatTex, v_uv);
+    // Force alpha=1 so shaders that don't write alpha (e.g. Shadertoy-style
+    // accumulators where alpha stays near 0) still display their RGB output.
+    fragColor = vec4(col.rgb, 1.0);
 }
 `

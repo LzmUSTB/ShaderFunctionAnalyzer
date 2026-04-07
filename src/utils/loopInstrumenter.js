@@ -12,6 +12,57 @@
  */
 
 /**
+ * Capture a body-local variable in a void function that has NO for-loop.
+ *
+ * For isOutput vars (fragColor): runs the shader to completion — the output
+ *   IS the final fragColor, so no injection is needed.
+ * For declared vars (vec2 p, float l, …): finds the declaration in the
+ *   source, injects `fragColor = <expr>; return;` right after its semicolon.
+ *
+ * @param {string} source   — original GLSL source
+ * @param {object} bodyInfo — { fn, watchVar }
+ * @returns {string}        — complete fragment shader ready to compile
+ */
+export function instrumentBodyVar(source, bodyInfo) {
+    const { fn, watchVar } = bodyInfo
+
+    // fragColor (isOutput): run the shader as-is; output IS the final fragColor
+    if (watchVar.isOutput) {
+        return buildShader(source)
+    }
+
+    const outputExpr   = buildOutputExpr(watchVar)
+    const captureCode  = `\n    // ── body var capture ──\n    fragColor = ${outputExpr};\n    return;\n    `
+
+    const injectAt = findBodyVarDeclarationEnd(source, fn.name, watchVar.type, watchVar.name)
+    if (injectAt === -1) return buildShader(source)   // fallback: run unmodified
+
+    const instrumented = source.slice(0, injectAt) + captureCode + source.slice(injectAt)
+    return buildShader(instrumented)
+}
+
+/**
+ * Find the character index immediately after the semicolon that ends a
+ * variable declaration like  `vec2 p = expr;`  inside a named function.
+ */
+function findBodyVarDeclarationEnd(src, fnName, varType, varName) {
+    const fnStart = findFunctionBody(src, fnName)
+    if (fnStart === -1) return -1
+
+    // Match the declaration keyword+name ("vec2 p") as word boundaries
+    const pattern = new RegExp(`\\b${varType}\\s+${varName}\\b`)
+    const sub     = src.slice(fnStart)
+    const match   = pattern.exec(sub)
+    if (!match) return -1
+
+    // Scan to the semicolon that terminates this statement
+    let i = fnStart + match.index + match[0].length
+    while (i < src.length && src[i] !== ';') i++
+    if (i >= src.length) return -1
+    return i + 1   // one past the semicolon
+}
+
+/**
  * @param {string} source      — original GLSL source
  * @param {object} loopInfo    — { fn, loopIndex, loop, watchVar }
  * @returns {string}           — complete instrumented fragment shader
@@ -48,7 +99,9 @@ export function instrumentLoop(source, loopInfo) {
     // ──────────────────────────────────────────────
 `
 
-    let instrumented = patchedSource
+    // Ensure every for-loop body has braces so our multi-statement capture
+    // snippet can always be injected (braceless bodies only allow one statement).
+    let instrumented = wrapBracelessForBodies(patchedSource)
 
     // For pre-loop vars: inject a capture point BEFORE the first for-loop.
     // This makes u_debug_N == 0 correspond to the variable's initial value.
@@ -181,6 +234,71 @@ function skipComment(src, i) {
         return Math.min(i + 2, src.length)
     }
     return i
+}
+
+/**
+ * Ensure every for-loop body is wrapped in braces.
+ *   for (...) stmt;   →   for (...) { stmt; }
+ * This lets the multi-statement capture snippet always be injected safely,
+ * even in terse one-liner shaders (e.g. compact art shaders).
+ */
+function wrapBracelessForBodies(src) {
+    const out = []
+    let i = 0
+
+    while (i < src.length) {
+        // Skip (and copy) comments verbatim
+        const ci = skipComment(src, i)
+        if (ci !== i) { out.push(src.slice(i, ci)); i = ci; continue }
+
+        // Detect `for` keyword (word boundaries on both sides)
+        if (src.slice(i, i + 3) === 'for'
+            && /\W/.test(src[i + 3] ?? ' ')
+            && (i === 0 || /\W/.test(src[i - 1]))) {
+
+            out.push('for'); i += 3
+
+            // Copy whitespace between `for` and `(`
+            while (i < src.length && /[ \t\n\r]/.test(src[i])) out.push(src[i++])
+
+            // Copy the `(...)` header, respecting paren depth
+            if (i < src.length && src[i] === '(') {
+                let depth = 0
+                while (i < src.length) {
+                    const c = src[i]
+                    if (c === '(') depth++
+                    else if (c === ')') depth--
+                    out.push(c); i++
+                    if (depth === 0) break
+                }
+            }
+
+            // Copy whitespace after `)`
+            while (i < src.length && /[ \t\n\r]/.test(src[i])) out.push(src[i++])
+
+            // If the body is NOT already braced, wrap the single statement
+            if (i < src.length && src[i] !== '{') {
+                out.push('{')
+                let braceD = 0, parenD = 0
+                while (i < src.length) {
+                    const ci2 = skipComment(src, i)
+                    if (ci2 !== i) { out.push(src.slice(i, ci2)); i = ci2; continue }
+                    const c = src[i]
+                    if (c === '{') braceD++
+                    else if (c === '}') { if (braceD-- === 0) break }
+                    else if (c === '(') parenD++
+                    else if (c === ')') parenD--
+                    out.push(c); i++
+                    if (c === ';' && braceD === 0 && parenD === 0) break
+                }
+                out.push('}')
+            }
+            continue
+        }
+
+        out.push(src[i++])
+    }
+    return out.join('')
 }
 
 /** Find the opening { of the named function's body */

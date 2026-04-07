@@ -46,10 +46,34 @@ function extractFunctions(ast) {
             type: getTypeName(p.specifier),
             name: p.identifier?.identifier ?? '',
         }))
+        // Unique identifier that survives overloading — e.g. "vec2 mod289(vec2)"
+        const id = `${returnType} ${name}(${params.map(p => p.type).join(', ')})`
+
         const loops        = extractLoops(node.body)
         const preLoopVars  = extractPreLoopVars(node.body)
 
-        functions.push({ name, returnType, params, loops, preLoopVars })
+        // In void main() every for-loop can have fragColor tracked across iterations,
+        // even when the loop body declares no local variables.
+        if (name === 'main' && returnType === 'void') {
+            for (const loop of loops) {
+                loop.localVars.push({ type: 'vec4', name: 'fragColor', isOutput: true })
+            }
+        }
+
+        // For void functions with NO for-loops, expose all body-local vars as
+        // trackable chips.  We reuse preLoopVars (which already scans the whole
+        // body when there is no for-statement to stop it early) and append a
+        // synthetic fragColor entry for void main so users can see the output.
+        const bodyVars = (loops.length === 0 && returnType === 'void')
+            ? [
+                ...preLoopVars,
+                ...(name === 'main'
+                    ? [{ type: 'vec4', name: 'fragColor', isOutput: true }]
+                    : []),
+              ]
+            : []
+
+        functions.push({ id, name, returnType, params, loops, preLoopVars, bodyVars })
     }
 
     return functions

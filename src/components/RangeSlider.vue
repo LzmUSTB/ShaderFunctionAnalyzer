@@ -28,8 +28,8 @@ import { ref } from 'vue'
 const props = defineProps({
   modelValue: { type: Number, default: 0 },
   isInt: { type: Boolean, default: false },
-  min: { type: Number, default: -10 },
-  max: { type: Number, default: 10 },
+  min: { type: Number, default: 0 },
+  max: { type: Number, default: 1 },
 })
 
 const emit = defineEmits(['update:modelValue'])
