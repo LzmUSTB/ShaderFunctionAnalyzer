@@ -1,17 +1,33 @@
 <template>
-  <div class="app-layout">
+  <div class="app-layout" :class="{ dragging }">
 
-    <Credit class="credit-panel" />
+    <!-- Column 1: Credit + Code -->
+    <div class="col" :style="{ width: colWidths[0] + 'px' }">
+      <Credit />
+      <CodePanel class="col-fill" @parse="onParse" />
+    </div>
 
-    <CodePanel class="code-panel" @parse="onParse" />
+    <div class="v-splitter" @mousedown="onSplitterDown(0, $event)">
+      <div class="v-splitter-handle" />
+    </div>
 
-    <SidePanel class="side-panel" :functions="parsedFunctions" :uniforms="parsedUniforms"
-      :uniform-values="uniformValues" :selected-function="selectedFunction" :selected-uniform="selectedUniform"
-      :selected-loop="selectedLoop" @select-function="onSelectFunction" @select-uniform="onSelectUniform"
-      @select-loop="onSelectLoop" @select-watch-var="onSelectWatchVar" @update-uniform="onUpdateUniform" />
+    <!-- Column 2: Side panel -->
+    <div class="col" :style="{ width: colWidths[1] + 'px' }">
+      <SidePanel class="col-fill" :functions="parsedFunctions" :uniforms="parsedUniforms"
+        :uniform-values="uniformValues" :selected-function="selectedFunction" :selected-uniform="selectedUniform"
+        :selected-loop="selectedLoop" @select-function="onSelectFunction" @select-uniform="onSelectUniform"
+        @select-loop="onSelectLoop" @select-watch-var="onSelectWatchVar" @update-uniform="onUpdateUniform" />
+    </div>
 
-    <GraphPanel class="graph-panel" :selected-function="selectedFunction" :selected-loop="selectedLoop"
-      :shader-source="shaderSource" :uniform-values="uniformValues" />
+    <div class="v-splitter" @mousedown="onSplitterDown(1, $event)">
+      <div class="v-splitter-handle" />
+    </div>
+
+    <!-- Column 3: Graph panel — takes remaining space -->
+    <div class="col col-right">
+      <GraphPanel class="col-fill" :selected-function="selectedFunction" :selected-loop="selectedLoop"
+        :shader-source="shaderSource" :uniform-values="uniformValues" />
+    </div>
 
   </div>
 </template>
@@ -29,7 +45,6 @@ const parsedUniforms = ref([])
 const shaderSource = ref('')
 
 // Live uniform values — edited in SidePanel, consumed by GraphPanel
-// Structure: { [name]: number | number[] }
 const uniformValues = ref({})
 
 // User selection
@@ -37,6 +52,38 @@ const selectedFunction = ref(null)
 const selectedUniform = ref(null)
 const selectedLoop = ref(null)
 
+// ── Resizable columns ─────────────────────────────────────────────────────────
+const dragging = ref(false)
+
+// Initial widths in pixels — roughly 1:1:2 ratio like the old grid
+const SPLITTER_W = 5
+const colWidths = ref([
+  Math.floor((window.innerWidth - SPLITTER_W * 2) * 0.25),
+  Math.floor((window.innerWidth - SPLITTER_W * 2) * 0.25),
+])
+
+function onSplitterDown(idx, e) {
+  e.preventDefault()
+  dragging.value = true
+  const startX = e.clientX
+  const startW = colWidths.value[idx]
+
+  function onMove(ev) {
+    const delta = ev.clientX - startX
+    const widths = [...colWidths.value]
+    widths[idx] = Math.max(120, startW + delta)
+    colWidths.value = widths
+  }
+  function onUp() {
+    dragging.value = false
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+  }
+  document.addEventListener('mousemove', onMove)
+  document.addEventListener('mouseup', onUp)
+}
+
+// ── Event handlers ────────────────────────────────────────────────────────────
 function onParse({ functions, uniforms, source }) {
   parsedFunctions.value = functions
   parsedUniforms.value = uniforms
@@ -44,10 +91,8 @@ function onParse({ functions, uniforms, source }) {
   selectedFunction.value = null
   selectedUniform.value = null
   selectedLoop.value = null
-  // Initialise uniform values from parser defaults, preserving existing values
   const next = {}
   for (const u of uniforms) {
-    // Keep the user's current value if it was already set, otherwise use default
     next[u.name] = uniformValues.value[u.name] ?? u.value
   }
   uniformValues.value = next
@@ -59,7 +104,7 @@ function onUpdateUniform({ name, value }) {
 
 function onSelectFunction(fn) {
   selectedFunction.value = selectedFunction.value?.name === fn.name ? null : fn
-  selectedLoop.value = null   // clear loop selection when switching to Mode A
+  selectedLoop.value = null
 }
 
 function onSelectUniform(u) {
@@ -67,8 +112,7 @@ function onSelectUniform(u) {
 }
 
 function onSelectLoop({ fn, loopIndex, loop }) {
-  selectedFunction.value = null   // clear Mode A selection
-  // Toggle loop selection
+  selectedFunction.value = null
   const same = selectedLoop.value?.fn.name === fn.name
     && selectedLoop.value?.loopIndex === loopIndex
   selectedLoop.value = same ? null : { fn, loopIndex, loop, watchVar: null }
@@ -82,36 +126,67 @@ function onSelectWatchVar({ fn, loopIndex, loop, watchVar, isPreLoop }) {
 
 <style scoped>
 .app-layout {
-  display: grid;
-  grid-template-columns: 1fr 1fr 2fr;
-  grid-template-rows: auto 1fr;
-  grid-template-areas:
-    "credit side graph"
-    "code side graph";
+  display: flex;
+  flex-direction: row;
   height: 100vh;
-  background: #ffffff;
-  color: #e0e0e0;
-  padding: 0.1em;
-  gap: 0.1em;
+  padding: 0.2em;
+  overflow: hidden;
   box-sizing: border-box;
 }
 
-.credit-panel {
-  grid-area: credit;
+.app-layout.dragging {
+  cursor: col-resize;
+  user-select: none;
 }
 
-.code-panel {
-  grid-area: code;
+/* Fixed-width columns (col 1 & 2), col-right fills remaining */
+.col {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.col-right {
+  flex: 1;
+}
+
+/* Panel fills its column */
+.col-fill {
+  flex: 1;
+  min-height: 0;
   overflow: auto;
 }
 
-.side-panel {
-  grid-area: side;
-  overflow: auto;
+/* ── Vertical splitter ── */
+.v-splitter {
+  flex: none;
+  width: 5px;
+  background: #ffffff;
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  transition: background 0.1s;
 }
 
-.graph-panel {
-  grid-area: graph;
-  overflow: auto;
+.v-splitter:hover,
+.app-layout.dragging .v-splitter {
+  background: #b0b0b0;
+}
+
+.v-splitter-handle {
+  width: 1px;
+  height: 40px;
+  background: #555;
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+.v-splitter:hover .v-splitter-handle,
+.app-layout.dragging .v-splitter-handle {
+  background: #999;
 }
 </style>

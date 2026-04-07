@@ -31,31 +31,16 @@ import PanelFrame from './PanelFrame.vue'
 const emit = defineEmits(['parse'])
 
 const code = ref(
-  `//RGB phase shifts
-uniform vec3 u_rgb; //0, 0.6, 1.2 [0, 6]
-//Bokeh radius
-uniform vec2 u_bokeh; //0.4, 0.8 [0, 4]
-//Animation speed
-uniform float u_speed; //0.4, [0, 2]
-//Spin range
-uniform float u_spin; //0.2, [0, 1]
-//Ring scatter strength
-uniform float u_scatter; //1.39, [0, 2]
-//Number of colors
-uniform int u_colors; //3, [1, 5]
-//Number of lines
-uniform float u_lines; //30, [10, 50]
+  `uniform float u_time;   //0, [0, 10]
+uniform float u_lines;  //30, [10, 50]
 
-//Noise functions
-float rand1(vec2 p)
-{
+float rand1(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
     p3 += dot(p3, p3.yzx + 33.33);
     return fract((p3.x + p3.y) * p3.z);
 }
 
-float value_noise(vec2 p)
-{
+float value_noise(vec2 p) {
     vec2 i = floor(p);
     vec2 f = fract(p);
     f = f * f * (3.0 - 2.0 * f);
@@ -63,34 +48,23 @@ float value_noise(vec2 p)
     float b = rand1(i + vec2(1.0, 0.0));
     float c = rand1(i + vec2(0.0, 1.0));
     float d = rand1(i + vec2(1.0, 1.0));
-    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y) * 2.0 - 1.0;
+    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
 
-mat2 rotate2d(float r)
-{
-    return mat2(cos(r), sin(r), -sin(r), cos(r));
-}
+void main() {
+    vec2 uv = gl_FragCoord.xy / u_resolution;
 
-void main()
-{
-    vec2 P = (gl_FragCoord.xy - u_resolution * 0.4) / u_resolution.y * 6e2,
-    u = vec2(dot(P, u_bokeh)) / 6e2;
+    float n = 0.0;
 
-    //Blank color
-    vec3 col = vec3(0);
+    for (float i = 0.0; i < 8.0; i += 1.0) {
+        float scale = pow(2.0, i);
 
-    //Fibonacci disk
-    for (float i = 1.0;i < 16.0;i += 1.0 / i)
-    {
-        vec2 p = (P + u * i) * mat2(2, 1, -2, 4) / 4e1;
-        float l = length(p);
-        float d = cos(sin(ceil(log(l) * u_lines) * 1e2) * 2e2 + u_speed * u_time);
-        float n = value_noise(0.5*vec2(l)) * value_noise(p * 5.0 * rotate2d(u_spin* d));
-        u *= rotate2d(2.4);
-        vec3 hue = cos(atan(p.y, p.x) * float(u_colors) + d * u_scatter + u_rgb) + 1.1;
-        col += pow(max(n * hue, 0.0) * sqrt(l) * 0.1, vec3(3.0));
+        vec2 p = uv * scale * u_lines + vec2(u_time * 0.5, u_time * 0.3);
+
+        n += value_noise(p) / scale;
     }
-    fragColor = vec4(sqrt(col / (1.0+col)), 1);
+
+    fragColor = vec4(vec3(n), 1.0);
 }`
 )
 
@@ -265,7 +239,7 @@ function onParse() {
 /* ── Syntax-highlighted pre layer ── */
 .code-highlight {
   background: #212121;
-  color: #a8d8a8;
+  color: #ffa200;
   /* default token colour */
   overflow-y: scroll;
   overflow-x: hidden;
@@ -288,7 +262,7 @@ function onParse() {
 /* :deep() is required because the spans are injected via v-html and
    Vue does not stamp scoped attributes onto dynamically-inserted nodes */
 :deep(.hl-keyword) {
-  color: #569cd6;
+  color: #24ffba;
 }
 
 /* blue  — types / qualifiers / control flow */

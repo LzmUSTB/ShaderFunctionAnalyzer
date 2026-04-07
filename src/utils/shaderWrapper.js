@@ -169,16 +169,30 @@ function defaultLiteral(type) {
  * Build the injected main() function.
  * - Maps the pixel UV to the plot range
  * - Calls the user's function
- * - Stores the result as a float in fragColor.r
+ * - Stores the result in fragColor:
+ *     vec3/vec4 → full RGB (Pass 2 uses passthrough to show real color)
+ *     float/int → single float in .r (Pass 2 applies heatmap)
+ *     vec2      → .x in .r (heatmap of first component)
  */
 function buildMain(fn, callArgs, r) {
     const { xMin, xMax, yMin, yMax } = r
 
-    // How to extract a single float from the function's return value
-    // float → use directly; vec2/vec3/vec4 → take .x component for now
-    const extractFloat = fn.returnType === 'float'
-        ? 'result'
-        : 'result.x'
+    let storeResult
+    switch (fn.returnType) {
+        case 'vec3':
+        case 'vec4':
+            // Store full RGB so the passthrough Pass 2 shows the real color
+            storeResult = 'fragColor = vec4(result.rgb, 1.0);'
+            break
+        case 'vec2':
+            storeResult = 'fragColor = vec4(result.x, 0.0, 0.0, 1.0);'
+            break
+        case 'int':
+            storeResult = 'fragColor = vec4(float(result), 0.0, 0.0, 1.0);'
+            break
+        default: // float
+            storeResult = 'fragColor = vec4(result, 0.0, 0.0, 1.0);'
+    }
 
     return `void main() {
     // Map UV (0→1) to the plot range
@@ -189,10 +203,7 @@ function buildMain(fn, callArgs, r) {
     // Call the selected function
     ${fn.returnType} result = ${fn.name}(${callArgs});
 
-    // Store the raw float value in .r for Pass 1 readback
-    // Pass 2 (heatmap shader) will colorize it
-    float value = ${extractFloat};
-    fragColor = vec4(value, 0.0, 0.0, 1.0);
+    ${storeResult}
 }`
 }
 

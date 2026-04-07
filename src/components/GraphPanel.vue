@@ -21,7 +21,7 @@
 
     <!-- Value range controls — hidden when displaying true color (vec3/vec4 or void main) -->
     <div v-if="!isDirectMode" class="range-bar">
-      <span class="range-label">range</span>
+      <span class="range-label">heatmap mapping range</span>
       <input class="range-input" type="number" step="0.1" v-model.number="heatMin" title="min value" />
       <span class="range-sep">→</span>
       <input class="range-input" type="number" step="0.1" v-model.number="heatMax" title="max value" />
@@ -230,20 +230,27 @@ function plotFunction(fn) {
     return
   }
 
-  // Matrix types cannot be mapped to a single float for the heatmap
+  // Matrix types cannot be mapped to the display
   const PLOTTABLE = new Set(['float', 'int', 'vec2', 'vec3', 'vec4'])
   if (!PLOTTABLE.has(fn.returnType)) {
-    errorMsg.value = `"${fn.name}" returns ${fn.returnType} — matrix types cannot be plotted as a heatmap.\n\nSelect an individual loop variable chip to use the thread tracker.`
+    errorMsg.value = `"${fn.name}" returns ${fn.returnType} — matrix types cannot be plotted.\n\nSelect an individual loop variable chip to use the thread tracker.`
     return
   }
 
-  isDirectMode.value = false
   const fragSrc = wrapFunction(props.shaderSource, fn, { xMin: -1, xMax: 1, yMin: -1, yMax: 1 })
   const result = renderer.compile(fragSrc)
   if (!result.ok) { errorMsg.value = result.error; return }
-  renderer.minVal = heatMin.value
-  renderer.maxVal = heatMax.value
-  renderer.render(props.uniformValues)
+
+  // vec3/vec4: buildMain stores result.rgb directly — use passthrough Pass 2
+  if (fn.returnType === 'vec3' || fn.returnType === 'vec4') {
+    isDirectMode.value = true
+    renderer.renderDirect(props.uniformValues)
+  } else {
+    isDirectMode.value = false
+    renderer.minVal = heatMin.value
+    renderer.maxVal = heatMax.value
+    renderer.render(props.uniformValues)
+  }
 }
 
 // ── Mode B / Thread Tracker: instrumented shader ──────────────────────────────
@@ -347,7 +354,9 @@ async function onHover(e) {
 
   let valueText
   if (isDirectMode.value) {
-    valueText = `rgb(${r.toFixed(3)}, ${g.toFixed(3)}, ${b.toFixed(3)})`
+    const fn = props.selectedFunction
+    const prefix = (fn?.returnType === 'vec3' || fn?.returnType === 'vec4') ? 'vec3' : 'rgb'
+    valueText = `${prefix}(${r.toFixed(3)}, ${g.toFixed(3)}, ${b.toFixed(3)})`
   } else {
     const wv = props.selectedLoop?.watchVar
     valueText = wv?.type === 'vec2'
@@ -472,7 +481,7 @@ function clearCanvas() {
 
 .range-label {
   font-size: 10px;
-  color: #666;
+  color: #949494;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   flex-shrink: 0;
@@ -502,11 +511,12 @@ function clearCanvas() {
 
 .range-sep {
   font-size: 11px;
-  color: #555;
+  color: #949494;
 }
 
 .range-reset {
   background: none;
+  color: #949494;
   border: 1px solid #444;
   border-radius: 3px;
   font-size: 12px;
