@@ -2,11 +2,8 @@
   font-family: 'fira code', 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, Courier, monospace;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
+  color: #212121;
+  background-color: #ffffff;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -19,12 +16,10 @@ input {
 
 a {
   font-weight: 500;
-  color: #a9a9a9;
-  text-decoration: inherit;
-}
-
-a:hover {
-  color: #535bf2;
+  color: #212121;
+  border: 1px solid #a5a5a5;
+  display: flex;
+  padding: 0.1em;
 }
 
 body {
@@ -53,21 +48,6 @@ button {
 
 #app {
   height: 100vh;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #212121;
-    background-color: #ffffff;
-  }
-
-  a:hover {
-    color: #747bff;
-  }
-
-  button {
-    background-color: #f9f9f9;
-  }
 }
 
 /* 重置默认样式 */

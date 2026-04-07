@@ -8,20 +8,25 @@ import Github from './svgs/Github.vue';
 <template>
     <div class="credit-frame">
         <div class="icon-row">
-            <BlogIcon />
-            <Github />
-            <Claude />
+            <a href="https://amazingwawa.com/" target="_blank" rel="noopener noreferrer">
+                <BlogIcon />
+            </a>
+            <a href="https://github.com/LzmUSTB/ShaderFunctionAnalyzer" target="_blank" rel="noopener noreferrer">
+                <Github />
+            </a>
+            <a href="https://claude.com/product/claude-code" target="_blank" rel="noopener noreferrer">
+                <Claude />
+            </a>
         </div>
         <div class="credit">
-            <p>@AmazingWawa</p>
-            <p>made with Claude code</p>
+            <p>Shader Analyzer v0.1</p>
         </div>
     </div>
 </template>
 
 <style scoped>
 .credit-frame {
-    padding: 0.5em;
+    padding: 0.2em;
     color: #212121;
     display: grid;
     grid-template-columns: auto 1fr;
@@ -36,6 +41,9 @@ import Github from './svgs/Github.vue';
 }
 
 .credit {
+    display: flex;
+    align-items: center;
     font-size: 0.3em;
+    justify-self: end;
 }
 </style>
