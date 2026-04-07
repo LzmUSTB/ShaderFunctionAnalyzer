@@ -47,6 +47,7 @@
         <div class="uniform-header">
           <span class="type-tag">{{ u.type }}</span>
           <span class="item-name">{{ u.name }}</span>
+          <span v-if="u.name === 'u_resolution'" class="auto-tag">auto change</span>
         </div>
 
         <!-- auto-managed: driven by canvas size, not user-editable -->
@@ -185,6 +186,16 @@ function onVecComponent(name, type, index, value) {
   font-weight: bold;
 }
 
+.auto-tag {
+  margin-left: 0.5em;
+  color: #b2ff8b;
+  text-wrap: nowrap;
+  user-select: none;
+  font-weight: bold;
+  background-color: #333333;
+  padding: 0 1em;
+}
+
 .params {
   color: #666;
   font-size: 10px;
@@ -202,7 +213,8 @@ function onVecComponent(name, type, index, value) {
 /* ── main() — shader entry point ── */
 .list-item.main {
   border-left: 2px solid #e8a838;
-  padding-left: 10px;   /* compensate for the border */
+  padding-left: 10px;
+  /* compensate for the border */
 }
 
 .list-item.main .type-tag {
