@@ -31,40 +31,62 @@ import PanelFrame from './PanelFrame.vue'
 const emit = defineEmits(['parse'])
 
 const code = ref(
-  `uniform float u_time;   //0, [0, 10]
-uniform float u_lines;  //30, [10, 50]
+  `uniform float u_time;//0 [0, 10]
+uniform int u_step;//50 [1,100] 
 
-float rand1(vec2 p) {
-    vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-    p3 += dot(p3, p3.yzx + 33.33);
-    return fract((p3.x + p3.y) * p3.z);
+float hash(float n) {
+    return fract(sin(n) * 43758.5453123);
 }
 
-float value_noise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    float a = rand1(i);
-    float b = rand1(i + vec2(1.0, 0.0));
-    float c = rand1(i + vec2(0.0, 1.0));
-    float d = rand1(i + vec2(1.0, 1.0));
-    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+vec2 hash2(float n) {
+    return vec2(hash(n), hash(n + 100.0));
+}
+
+vec3 hsv2rgb(vec3 c) {
+    vec3 rgb = clamp(abs(mod(c.x * 6.0 + vec3(0,4,2), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+    return c.z * mix(vec3(1.0), rgb, c.y);
+}
+
+vec3 getColor(float i) {
+    float t = u_time * 0.5;
+    float hue = fract(i * 0.1 + t);
+    return hsv2rgb(vec3(hue, 0.6, 0.9));
+}
+
+float circleSDF(vec2 p, float r) {
+    return length(p) - r;
 }
 
 void main() {
-    vec2 uv = gl_FragCoord.xy / u_resolution;
+    vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+    vec2 p = uv * 2.0 - 1.0;
+    p.x *= u_resolution.x / u_resolution.y;
 
-    float n = 0.0;
+    vec3 color = vec3(0.0);
 
-    for (float i = 0.0; i < 8.0; i += 1.0) {
-        float scale = pow(2.0, i);
+    for (int i = 0; i < 100; i++) {
+        if (i >= u_step) break;
 
-        vec2 p = uv * scale * u_lines + vec2(u_time * 0.5, u_time * 0.3);
+        float fi = float(i);
 
-        n += value_noise(p) / scale;
+        vec2 rnd = hash2(fi);
+        vec2 center = rnd * 2.0 - 1.0;
+
+        float radius = 0.03 + 0.05 * hash(fi + 200.0);
+
+        vec2 local = p - center;
+
+        float d = circleSDF(local, radius);
+
+        float mask = smoothstep(0.01, 0.0, d);
+
+        vec3 c = getColor(fi);
+
+        color += c * mask;
     }
+    color = clamp(color, 0.0, 1.0);
 
-    fragColor = vec4(vec3(n), 1.0);
+    fragColor = vec4(color, 1.0);
 }`
 )
 
